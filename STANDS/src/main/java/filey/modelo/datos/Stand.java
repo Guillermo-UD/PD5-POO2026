@@ -7,9 +7,9 @@ import java.util.Objects;
 
 public final class Stand {
     private final int id;
-    private final BigDecimal ancho;
-    private final BigDecimal largo;
-    private final BigDecimal precioPorMetroCuadrado;
+    private BigDecimal ancho;
+    private BigDecimal largo;
+    private BigDecimal precioPorMetroCuadrado;
     private EstadoStand estado = EstadoStand.DISPONIBLE;
     private Reserva reservaActual;
 
@@ -38,6 +38,26 @@ public final class Stand {
         return getSuperficie().multiply(precioPorMetroCuadrado).setScale(2, RoundingMode.HALF_UP);
     }
 
+    public void editar(BigDecimal nuevoAncho, BigDecimal nuevoLargo, BigDecimal nuevoPrecioPorMetroCuadrado) {
+        if (estado != EstadoStand.DISPONIBLE) {
+            throw new IllegalStateException("Solo se puede editar un stand disponible.");
+        }
+        if (Objects.requireNonNull(nuevoAncho).signum() <= 0
+                || Objects.requireNonNull(nuevoLargo).signum() <= 0
+                || Objects.requireNonNull(nuevoPrecioPorMetroCuadrado).signum() <= 0) {
+            throw new IllegalArgumentException("Las dimensiones y el precio deben ser positivos.");
+        }
+        BigDecimal anchoNuevo = nuevoAncho.setScale(2, RoundingMode.UNNECESSARY);
+        BigDecimal largoNuevo = nuevoLargo.setScale(2, RoundingMode.UNNECESSARY);
+        BigDecimal precioNuevo = nuevoPrecioPorMetroCuadrado.setScale(2, RoundingMode.UNNECESSARY);
+        if (anchoNuevo.multiply(largoNuevo).multiply(precioNuevo).setScale(2, RoundingMode.HALF_UP).signum() <= 0) {
+            throw new IllegalArgumentException("El precio total debe ser al menos un centavo.");
+        }
+        ancho = anchoNuevo;
+        largo = largoNuevo;
+        precioPorMetroCuadrado = precioNuevo;
+    }
+
     public void bloquear() {
         exigirEstado(EstadoStand.DISPONIBLE);
         estado = EstadoStand.BLOQUEADO;
@@ -46,6 +66,15 @@ public final class Stand {
     public void desbloquear() {
         exigirEstado(EstadoStand.BLOQUEADO);
         estado = EstadoStand.DISPONIBLE;
+    }
+
+    public void restaurarEstado(EstadoStand estado) {
+        this.estado = Objects.requireNonNull(estado);
+    }
+
+    public void restaurarReserva(Reserva reserva, EstadoStand estado) {
+        reservaActual = Objects.requireNonNull(reserva);
+        this.estado = Objects.requireNonNull(estado);
     }
 
     /** La reserva solo se construye desde el stand, evitando asociaciones duplicadas. */

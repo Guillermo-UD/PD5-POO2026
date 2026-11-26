@@ -18,7 +18,7 @@ public final class Reserva {
     private final List<Pago> pagos = new ArrayList<>();
     private boolean vencida;
 
-    Reserva(int id, Editorial editorial, Stand stand, LocalDate fechaCreacion,
+    public Reserva(int id, Editorial editorial, Stand stand, LocalDate fechaCreacion,
             LocalDate vencimiento, LocalDate limiteLiquidacion) {
         if (id <= 0) { throw new IllegalArgumentException("El ID debe ser positivo."); }
         this.id = id;
@@ -42,6 +42,21 @@ public final class Reserva {
     public BigDecimal getPrecioTotal() { return precioTotal; }
     public List<Pago> getPagos() { return List.copyOf(pagos); }
     public boolean isVencida() { return vencida; }
+
+    public void restaurarPago(Pago pago) {
+        pagos.add(Objects.requireNonNull(pago));
+    }
+
+    public void retirarUltimoPago() {
+        if (pagos.isEmpty()) {
+            throw new IllegalStateException("La reserva no tiene pagos que retirar.");
+        }
+        pagos.remove(pagos.size() - 1);
+    }
+
+    public void restaurarVencida(boolean vencida) {
+        this.vencida = vencida;
+    }
 
     public BigDecimal getAbonado() {
         return pagos.stream().map(Pago::getImporte).reduce(new BigDecimal("0.00"), BigDecimal::add);

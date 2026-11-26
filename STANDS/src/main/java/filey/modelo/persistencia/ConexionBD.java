@@ -3,6 +3,7 @@ package filey.modelo.persistencia;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -10,7 +11,7 @@ import java.util.Properties;
 
 public final class ConexionBD {
     private static final String URL =
-        "jdbc:mysql://localhost:3306/filey?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Merida";
+            "jdbc:mysql://localhost:3306/filey?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Merida";
     private static final String ARCHIVO = "db.properties";
 
     private ConexionBD() { }
@@ -28,26 +29,38 @@ public final class ConexionBD {
     private static Connection conectar(String varUsuario, String varClave) throws SQLException {
         String usuario = leer(varUsuario);
         String clave = leer(varClave);
-        if (usuario == null || clave == null) {
-            throw new IllegalStateException("Faltan " + varUsuario + " y " + varClave
-                    + ". Se buscó en las variables de entorno y en: "
-                    + new File(ARCHIVO).getAbsolutePath());
+        if (usuario == null || usuario.isBlank() || clave == null || clave.isBlank()) {
+            throw new IllegalStateException("Configura " + varUsuario + " y " + varClave
+                    + " con las credenciales de MySQL, ya sea como variables de entorno o en "
+                    + "src/main/resources/db.properties. El valor de la contraseña no puede estar vacío.");
         }
         return DriverManager.getConnection(URL, usuario, clave);
     }
 
-    /** Busca primero en las variables de entorno y luego en db.properties. */
+    /** Busca en: variables de entorno, luego db.properties del classpath, luego de la carpeta actual. */
     private static String leer(String nombre) {
         String valor = System.getenv(nombre);
-        if (valor != null) {
+        if (valor != null && !valor.isBlank()) {
             return valor;
         }
+        return cargarPropiedades().getProperty(nombre);
+    }
+
+    private static Properties cargarPropiedades() {
         Properties props = new Properties();
+        try (InputStream in = ConexionBD.class.getResourceAsStream("/" + ARCHIVO)) {
+            if (in != null) {
+                props.load(in);
+                return props;
+            }
+        } catch (IOException e) {
+            // se intenta con la carpeta actual
+        }
         try (FileInputStream in = new FileInputStream(ARCHIVO)) {
             props.load(in);
         } catch (IOException e) {
-            return null;
+            // sin archivo: quedan las propiedades vacías
         }
-        return props.getProperty(nombre);
+        return props;
     }
 }
